@@ -11,4 +11,4 @@ RUN apt-get update && apt-get install -y openssh-client vim zip htop screen libg
 RUN pip install -r requirements.txt
 
 EXPOSE 3000
-CMD unicorn app.app:app --host 0.0.0.0 --port 3000
+# CMD uvicorn app.app:app --host 0.0.0.0 --port 3000
