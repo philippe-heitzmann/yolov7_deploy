@@ -2,10 +2,12 @@
 *.pt
 *.onnx
 *.zip
+*.engine
+*.plan 
 
-
-# Byte-compiled / optimized / DLL files
+.Trash-0/
 __pycache__/
+# Byte-compiled / optimized / DLL files
 *.py[cod]
 *$py.class
 
