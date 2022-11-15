@@ -25,6 +25,7 @@ docker run --gpus all --rm --ipc=host --shm-size=1g --ulimit memlock=-1 --ulimit
 #Windows powershell
 docker run --gpus all --rm --ipc=host --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v C:\Users\phil0\DS\yolov7_deploy\models:/models nvcr.io/nvidia/tritonserver:22.06-py3 tritonserver --model-repository=/models --strict-model-config=false --log-verbose 1
 
+# WSL
 docker run --gpus all --rm --ipc=host --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v /mnt/c/Users/phil0/DS/yolov7_deploy/models:/models nvcr.io/nvidia/tritonserver:22.06-py3 tritonserver --model-repository=/models --strict-model-config=false --log-verbose 1
 
 # Start client 
@@ -35,7 +36,7 @@ docker run -it --rm --net=host nvcr.io/nvidia/tritonserver:22.10-py3-sdk
 
 /workspace/install/bin/image_client -m yolov7 -c 3 -s INCEPTION /workspace/images/mug.jpg
 
-
+#  "C:\\Users\\phil0\\anaconda3\\envs\\py38_triton2\\python.exe"
 ```
 
 ## Export weights
