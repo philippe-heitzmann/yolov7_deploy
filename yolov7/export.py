@@ -1,7 +1,12 @@
 import argparse
+import logging
 import sys
 import time
 import warnings
+
+logging.basicConfig(format="%(message)s",
+                    # handlers=[StructuredLogHandler()], 
+                    level = 'INFO', force=True)
 
 sys.path.append('./')  # to run '$ python *.py' files in subdirectories
 
@@ -34,11 +39,12 @@ if __name__ == '__main__':
     parser.add_argument('--include-nms', action='store_true', help='export end2end onnx')
     parser.add_argument('--fp16', action='store_true', help='CoreML FP16 half-precision export')
     parser.add_argument('--int8', action='store_true', help='CoreML INT8 quantization')
+    parser.add_argument('--output_filename', type=str, default='yolov7_tiny_65iou_35_conf', help='onnx output filename')
     opt = parser.parse_args()
     opt.img_size *= 2 if len(opt.img_size) == 1 else 1  # expand
     opt.dynamic = opt.dynamic and not opt.end2end
     opt.dynamic = False if opt.dynamic_batch else opt.dynamic
-    print(opt)
+    logging.info(opt)
     set_logging()
     t = time.time()
 
@@ -71,54 +77,55 @@ if __name__ == '__main__':
         y = None
 
     # TorchScript export
-    try:
-        print('\nStarting TorchScript export with torch %s...' % torch.__version__)
-        f = opt.weights.replace('.pt', '.torchscript.pt')  # filename
-        ts = torch.jit.trace(model, img, strict=False)
-        ts.save(f)
-        print('TorchScript export success, saved as %s' % f)
-    except Exception as e:
-        print('TorchScript export failure: %s' % e)
+    # try:
+    #     logging.info('\nStarting TorchScript export with torch %s...' % torch.__version__)
+    #     f = opt.weights.replace('.pt', '.torchscript.pt')  # filename
+    #     ts = torch.jit.trace(model, img, strict=False)
+    #     ts.save(f)
+    #     logging.info('TorchScript export success, saved as %s' % f)
+    # except Exception as e:
+    #     logging.info('TorchScript export failure: %s' % e)
 
     # CoreML export
-    try:
-        import coremltools as ct
+    # try:
+    #     import coremltools as ct
 
-        print('\nStarting CoreML export with coremltools %s...' % ct.__version__)
-        # convert model from torchscript and apply pixel scaling as per detect.py
-        ct_model = ct.convert(ts, inputs=[ct.ImageType('image', shape=img.shape, scale=1 / 255.0, bias=[0, 0, 0])])
-        bits, mode = (8, 'kmeans_lut') if opt.int8 else (16, 'linear') if opt.fp16 else (32, None)
-        if bits < 32:
-            if sys.platform.lower() == 'darwin':  # quantization only supported on macOS
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=DeprecationWarning)  # suppress numpy==1.20 float warning
-                    ct_model = ct.models.neural_network.quantization_utils.quantize_weights(ct_model, bits, mode)
-            else:
-                print('quantization only supported on macOS, skipping...')
+    #     logging.info('\nStarting CoreML export with coremltools %s...' % ct.__version__)
+    #     # convert model from torchscript and apply pixel scaling as per detect.py
+    #     ct_model = ct.convert(ts, inputs=[ct.ImageType('image', shape=img.shape, scale=1 / 255.0, bias=[0, 0, 0])])
+    #     bits, mode = (8, 'kmeans_lut') if opt.int8 else (16, 'linear') if opt.fp16 else (32, None)
+    #     if bits < 32:
+    #         if sys.platform.lower() == 'darwin':  # quantization only supported on macOS
+    #             with warnings.catch_warnings():
+    #                 warnings.filterwarnings("ignore", category=DeprecationWarning)  # suppress numpy==1.20 float warning
+    #                 ct_model = ct.models.neural_network.quantization_utils.quantize_weights(ct_model, bits, mode)
+    #         else:
+    #             logging.info('quantization only supported on macOS, skipping...')
 
-        f = opt.weights.replace('.pt', '.mlmodel')  # filename
-        ct_model.save(f)
-        print('CoreML export success, saved as %s' % f)
-    except Exception as e:
-        print('CoreML export failure: %s' % e)
+    #     f = opt.weights.replace('.pt', '.mlmodel')  # filename
+    #     ct_model.save(f)
+    #     logging.info('CoreML export success, saved as %s' % f)
+    # except Exception as e:
+    #     logging.info('CoreML export failure: %s' % e)
                      
     # TorchScript-Lite export
-    try:
-        print('\nStarting TorchScript-Lite export with torch %s...' % torch.__version__)
-        f = opt.weights.replace('.pt', '.torchscript.ptl')  # filename
-        tsl = torch.jit.trace(model, img, strict=False)
-        tsl = optimize_for_mobile(tsl)
-        tsl._save_for_lite_interpreter(f)
-        print('TorchScript-Lite export success, saved as %s' % f)
-    except Exception as e:
-        print('TorchScript-Lite export failure: %s' % e)
+    # try:
+    #     logging.info('\nStarting TorchScript-Lite export with torch %s...' % torch.__version__)
+    #     f = opt.weights.replace('.pt', '.torchscript.ptl')  # filename
+    #     tsl = torch.jit.trace(model, img, strict=False)
+    #     tsl = optimize_for_mobile(tsl)
+    #     tsl._save_for_lite_interpreter(f)
+    #     logging.info('TorchScript-Lite export success, saved as %s' % f)
+    # except Exception as e:
+    #     logging.info('TorchScript-Lite export failure: %s' % e)
 
     # ONNX export
     try:
         import onnx
 
-        print('\nStarting ONNX export with onnx %s...' % onnx.__version__)
-        f = opt.weights.replace('.pt', '.onnx')  # filename
+        logging.info('\nStarting ONNX export with onnx %s...' % onnx.__version__)
+        f = opt.output_filename + '.onnx'
+        # f = opt.weights.replace('.pt', '.onnx')  # filename
         model.eval()
         output_names = ['classes', 'boxes'] if y is None else ['output']
         dynamic_axes = None
@@ -145,7 +152,7 @@ if __name__ == '__main__':
             dynamic_axes.update(output_axes)
         if opt.grid:
             if opt.end2end:
-                print('\nStarting export end2end onnx model for %s...' % 'TensorRT' if opt.max_wh is None else 'onnxruntime')
+                logging.info('\nStarting export end2end onnx model for %s...' % 'TensorRT' if opt.max_wh is None else 'onnxruntime')
                 model = End2End(model,opt.topk_all,opt.iou_thres,opt.conf_thres,opt.max_wh,device,len(labels))
                 if opt.end2end and opt.max_wh is None:
                     output_names = ['num_dets', 'det_boxes', 'det_scores', 'det_classes']
@@ -169,37 +176,37 @@ if __name__ == '__main__':
                 for j in i.type.tensor_type.shape.dim:
                     j.dim_param = str(shapes.pop(0))
 
-        # print(onnx.helper.printable_graph(onnx_model.graph))  # print a human readable model
+        logging.info(onnx.helper.logging.infoable_graph(onnx_model.graph))  # logging.info a human readable model
 
-        # # Metadata
-        # d = {'stride': int(max(model.stride))}
-        # for k, v in d.items():
-        #     meta = onnx_model.metadata_props.add()
-        #     meta.key, meta.value = k, str(v)
-        # onnx.save(onnx_model, f)
+        # Metadata
+        d = {'stride': int(max(model.stride))}
+        for k, v in d.items():
+            meta = onnx_model.metadata_props.add()
+            meta.key, meta.value = k, str(v)
+        onnx.save(onnx_model, f)
 
         if opt.simplify:
             try:
                 import onnxsim
 
-                print('\nStarting to simplify ONNX...')
+                logging.info('\nStarting to simplify ONNX...')
                 onnx_model, check = onnxsim.simplify(onnx_model)
                 assert check, 'assert check failed'
             except Exception as e:
-                print(f'Simplifier failure: {e}')
+                logging.info(f'Simplifier failure: {e}')
 
-        # print(onnx.helper.printable_graph(onnx_model.graph))  # print a human readable model
+        # logging.info(onnx.helper.logging.infoable_graph(onnx_model.graph))  # logging.info a human readable model
         onnx.save(onnx_model,f)
-        print('ONNX export success, saved as %s' % f)
+        logging.info('ONNX export success, saved as %s' % f)
 
         if opt.include_nms:
-            print('Registering NMS plugin for ONNX...')
+            logging.info('Registering NMS plugin for ONNX...')
             mo = RegisterNMS(f)
             mo.register_nms()
             mo.save(f)
 
     except Exception as e:
-        print('ONNX export failure: %s' % e)
+        logging.info('ONNX export failure: %s' % e)
 
     # Finish
-    print('\nExport complete (%.2fs). Visualize with https://github.com/lutzroeder/netron.' % (time.time() - t))
+    logging.info('\nExport complete (%.2fs). Visualize with https://github.com/lutzroeder/netron.' % (time.time() - t))

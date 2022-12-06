@@ -5,9 +5,16 @@ Objective:
 
 ## Docker 
 ```
-docker build -t yolov7:v1 .
-docker run -it --shm-size=64G -p 8888:8888 --rm -e DEVICE=gpu -v C:\Users\phil0\DS\yolov7_deploy:/app --name yolov7_v1 yolov7:v1 jupyter notebook --port=8888 --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token=''
-# Tensorrt image
+docker build -t yolov7_deploy:v1 .
+Test
+docker run -it --rm --shm-size=64G --gpus all -p 8888:8888 yolov7_deploy:v1 jupyter notebook --port=8888 --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token=''
+
+docker run -it --rm --shm-size=64G --gpus all -p 8888:8888 -v C:\Users\phil0\DS\yolov7_deploy:/app yolov7_deploy:v1 jupyter notebook --port=8888 --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token=''
+
+--name yolov7_v1
+-v C:\Users\phil0\DS\yolov7_deploy:/app 
+
+# Build Tensorrt image
 docker run --shm-size=64G -it --rm --gpus=all nvcr.io/nvidia/tensorrt:22.06-py3
 docker cp ./yolov7/weights/yolov7.onnx <container_ID>:/workspace
 example: docker cp ./yolov7/weights/yolov7.onnx bda96989d142d29a6a50856f4fdb5572309f2ebe311ed3d6234923c324f0abd6:/workspace/
@@ -41,3 +48,7 @@ docker run -it --rm --net=host nvcr.io/nvidia/tritonserver:22.10-py3-sdk
 
 ## Export weights
 !python 
+
+```python
+
+```

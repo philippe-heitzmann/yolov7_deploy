@@ -5,6 +5,10 @@
 *.engine
 *.plan 
 
+# other repos 
+yolov7/tools/YOLO-TensorRT8/
+yolov7/tools/tensorrt-python/
+
 .Trash-0/
 __pycache__/
 # Byte-compiled / optimized / DLL files
